@@ -1,26 +1,32 @@
+/* Navbar styling */
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 30px;
-  background-color: white;
-  border-bottom: 1px solid #ddd;
+  padding: 10px 20px;
+  background-color: white; /* Zorg ervoor dat de achtergrondkleur goed zichtbaar is */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Optioneel, schaduw voor een mooi effect */
+  position: fixed; /* Zorg ervoor dat de navbar altijd bovenaan blijft */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000; /* Zorg ervoor dat de navbar bovenaan blijft */
+  width: 100%;
 }
 
-.logo {
-  font-size: 24px;
-  font-weight: bold;
+.navbar-left .logo {
+  height: 30px; /* Pas de hoogte van het logo aan */
 }
 
-.search {
-  padding: 5px 10px;
-  font-size: 16px;
-  border-radius: 4px;
+.navbar-center .search-bar {
+  width: 200px;
+  padding: 5px;
+  border-radius: 5px;
   border: 1px solid #ccc;
 }
 
-.icons span {
-  margin-left: 20px;
-  cursor: pointer;
-  font-size: 20px;
+.navbar-right .user-icon {
+  height: 30px;
+  border-radius: 50%; /* Maak de user icon rond */
+  object-fit: cover;
 }

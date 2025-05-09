@@ -1,18 +1,24 @@
+// Navbar.jsx
 import React from "react";
-import "../styles/Navbar.css";
+import "../styles/Navbar.css"; // Zorg ervoor dat je de juiste CSS hebt
 
 const Navbar = () => {
   return (
-    <nav className="navbar">
-      <h1 className="logo">Instagram</h1>
-      <input type="text" placeholder="Zoeken..." className="search" />
-      <div className="icons">
-        <span>🏠</span>
-        <span>💬</span>
-        <span>❤️</span>
-        <span>👤</span>
+    <div className="navbar">
+      <div className="navbar-left">
+        <img src="/path-to-your-logo.png" alt="Logo" className="logo" />
       </div>
-    </nav>
+      <div className="navbar-center">
+        <input type="text" placeholder="Search" className="search-bar" />
+      </div>
+      <div className="navbar-right">
+        <img
+          src="/path-to-your-user-icon.png"
+          alt="User"
+          className="user-icon"
+        />
+      </div>
+    </div>
   );
 };
 

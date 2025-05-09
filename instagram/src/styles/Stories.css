@@ -1,22 +1,32 @@
+/* Styles voor de stories */
 .stories {
   display: flex;
-  gap: 15px;
-  padding: 15px;
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  overflow-x: auto;
+  overflow-x: scroll;
+  padding: 10px;
+  background-color: #fff;
 }
 
 .story {
+  flex: 0 0 auto;
+  margin-right: 15px;
   text-align: center;
-  width: 60px;
 }
 
-.story img {
-  width: 50px;
-  height: 50px;
+.story-image {
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  border: 2px solid pink;
+  object-fit: cover;
+  border: 3px solid #f0f0f0;
+  transition: transform 0.3s ease;
+}
+
+.story-image:hover {
+  transform: scale(1.1);
+}
+
+.story p {
+  margin-top: 5px;
+  font-size: 14px;
+  color: #333;
 }

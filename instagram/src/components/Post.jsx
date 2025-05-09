@@ -1,3 +1,4 @@
+// Post.jsx
 import React from "react";
 import "../styles/Post.css";
 
@@ -11,4 +12,4 @@ const Post = ({ username, image, caption }) => {
   );
 };
 
-export default Post;
+export default Post; // Dit is belangrijk: export default!
