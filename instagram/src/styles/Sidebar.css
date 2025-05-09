@@ -1,0 +1,25 @@
+.sidebar {
+  width: 200px;
+  padding: 20px;
+  background-color: white;
+  border-right: 1px solid #ddd;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.sidebar h2 {
+  font-size: 22px;
+  margin-bottom: 30px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin: 15px 0;
+  cursor: pointer;
+}
