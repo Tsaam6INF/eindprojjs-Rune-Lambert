@@ -15,6 +15,7 @@ function Login() {
         password,
       });
       localStorage.setItem("token", res.data.token); // als je een token terugkrijgt
+      localStorage.setItem("username", res.data.user.username); // voeg dit toe
       window.location.href = "/";
     } catch (err) {
       setError("Login mislukt, controleer je gegevens.");

@@ -1,23 +1,17 @@
-const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
-const path = require("path");
+import express from "express";
+import path from "path";
+import sqlite3 from "sqlite3";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Verbind met database
-const dbPath = path.resolve(__dirname, "../sqlite.db");
-const db = new sqlite3.Database(dbPath);
+// Connectie met dezelfde database
+const db = new sqlite3.Database(path.join(__dirname, "../sqlite.db"));
 
-// Zorg dat de users-tabel bestaat
-db.run(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-  )
-`);
-
-// 📌 Register route
+// Register
 router.post("/register", (req, res) => {
   const { username, password } = req.body;
 
@@ -41,7 +35,7 @@ router.post("/register", (req, res) => {
   });
 });
 
-// 📌 Login route
+// Login
 router.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -57,8 +51,18 @@ router.post("/login", (req, res) => {
         .json({ message: "Ongeldige gebruikersnaam of wachtwoord." });
     }
 
-    res.status(200).json({ message: "Ingelogd!", user });
+    // Simpele token (voor demo, vervang door JWT in productie)
+    const token = "dummy-token-" + user.id;
+
+    res.status(200).json({
+      message: "Ingelogd!",
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    });
   });
 });
 
-module.exports = router;
+export default router;

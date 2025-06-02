@@ -1,25 +1,17 @@
-// Navbar.jsx
-import React from "react";
-import "../styles/Navbar.css"; // Zorg ervoor dat je de juiste CSS hebt
+import { useNavigate } from "react-router-dom";
 
-const Navbar = () => {
+export default function Navbar({ setIsLoggedIn }) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false); // Update state: uitloggen
+    navigate("/login");
+  };
+
   return (
-    <div className="navbar">
-      <div className="navbar-left">
-        <img src="/path-to-your-logo.png" alt="Logo" className="logo" />
-      </div>
-      <div className="navbar-center">
-        <input type="text" placeholder="Search" className="search-bar" />
-      </div>
-      <div className="navbar-right">
-        <img
-          src="/path-to-your-user-icon.png"
-          alt="User"
-          className="user-icon"
-        />
-      </div>
-    </div>
+    <nav style={{ padding: "1rem", background: "#eee", marginBottom: "1rem" }}>
+      <button onClick={handleLogout}>Log uit</button>
+    </nav>
   );
-};
-
-export default Navbar;
+}

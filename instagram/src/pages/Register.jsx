@@ -1,31 +1,42 @@
-// --- src/pages/Register.js ---
-import { useState } from "react";
-import api from "../api";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import axios from "axios";
 
-export default function Register() {
+const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const nav = useNavigate();
 
-  const register = async () => {
-    await api.post("/auth/register", { username, password });
-    nav("/login");
+  const register = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await axios.post("http://localhost:3001/api/auth/register", {
+        username,
+        password,
+      });
+      alert("Registratie gelukt!");
+    } catch (err) {
+      console.error(err);
+      alert("Registratie mislukt");
+    }
   };
 
   return (
-    <div>
-      <h2>Registreren</h2>
+    <form onSubmit={register}>
+      <h2>Register</h2>
       <input
         placeholder="Gebruikersnaam"
+        value={username}
         onChange={(e) => setUsername(e.target.value)}
       />
       <input
-        placeholder="Wachtwoord"
         type="password"
+        placeholder="Wachtwoord"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button onClick={register}>Registreer</button>
-    </div>
+      <button type="submit">Registreer</button>
+    </form>
   );
-}
+};
+
+export default Register;
