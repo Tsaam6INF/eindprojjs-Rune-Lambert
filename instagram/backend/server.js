@@ -4,7 +4,6 @@ import sqlite3 from "sqlite3";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import authRouter from "./routes/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,7 +37,6 @@ db.all("PRAGMA table_info(photos)", (err, columns) => {
     console.error("Fout bij ophalen van tabelinfo:", err);
     return;
   }
-
   const hasDescription = columns.some((col) => col.name === "description");
   if (!hasDescription) {
     db.run(`ALTER TABLE photos ADD COLUMN description TEXT`);
@@ -60,6 +58,13 @@ db.run(`CREATE TABLE IF NOT EXISTS comments (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
+db.run(`CREATE TABLE IF NOT EXISTS shares (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  photo_id INTEGER NOT NULL,
+  username TEXT NOT NULL,
+  UNIQUE(photo_id, username)
+)`);
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => {
@@ -69,7 +74,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Foto uploaden met beschrijving
+// Foto uploaden
 app.post("/api/photos/:username", upload.single("photo"), (req, res) => {
   const username = req.params.username;
   const description = req.body.description || "";
@@ -89,6 +94,14 @@ app.post("/api/photos/:username", upload.single("photo"), (req, res) => {
   );
 });
 
+// Alle foto's ophalen
+app.get("/api/photos", (req, res) => {
+  db.all("SELECT id, filename, user, description FROM photos", (err, rows) => {
+    if (err) return res.status(500).json({ error: "Database fout" });
+    res.json(rows);
+  });
+});
+
 // Foto's van gebruiker ophalen
 app.get("/api/photos/:username", (req, res) => {
   const username = req.params.username;
@@ -101,14 +114,6 @@ app.get("/api/photos/:username", (req, res) => {
       res.json(rows);
     }
   );
-});
-
-// Alle foto's ophalen
-app.get("/api/photos", (req, res) => {
-  db.all("SELECT id, filename, user, description FROM photos", (err, rows) => {
-    if (err) return res.status(500).json({ error: "Database fout" });
-    res.json(rows);
-  });
 });
 
 // Like toevoegen
@@ -149,6 +154,49 @@ app.get("/api/photos/:photoId/likes", (req, res) => {
           .status(500)
           .json({ error: "Database fout bij ophalen likes" });
       res.json(rows);
+    }
+  );
+});
+
+// Share toevoegen
+app.post("/api/photos/:photoId/share", (req, res) => {
+  const { photoId } = req.params;
+  const { username } = req.body;
+  if (!username)
+    return res.status(400).json({ error: "Username is verplicht" });
+
+  db.run(
+    "INSERT OR IGNORE INTO shares (photo_id, username) VALUES (?, ?)",
+    [photoId, username],
+    function (err) {
+      if (err)
+        return res.status(500).json({ error: "Database fout bij share" });
+
+      db.get(
+        "SELECT COUNT(*) AS count FROM shares WHERE photo_id = ?",
+        [photoId],
+        (err, row) => {
+          if (err)
+            return res.status(500).json({ error: "Fout bij tellen shares" });
+          res.json({ count: row.count }); // <-- Fix: stuur count in een object
+        }
+      );
+    }
+  );
+});
+
+// Shares ophalen
+app.get("/api/photos/:photoId/shares", (req, res) => {
+  const { photoId } = req.params;
+  db.get(
+    "SELECT COUNT(*) AS count FROM shares WHERE photo_id = ?",
+    [photoId],
+    (err, row) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ error: "Database fout bij ophalen shares" });
+      res.json({ count: row.count }); // <-- Fix: stuur count in een object
     }
   );
 });
