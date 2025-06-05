@@ -1,37 +1,68 @@
+// =======================
+// 📦 IMPORTS
+// =======================
+
+// Express is het framework voor het bouwen van de webserver en API-routes
 import express from "express";
+
+// Multer wordt gebruikt om bestanden (zoals afbeeldingen) te uploaden
 import multer from "multer";
+
+// SQLite is een lichte database die lokaal draait (geen aparte server nodig)
 import sqlite3 from "sqlite3";
+
+// CORS zorgt ervoor dat de frontend requests mag maken naar de backend, ook al draaien ze op andere poorten
 import cors from "cors";
+
+// Path en fileURLToPath worden gebruikt om correcte padnamen te bepalen in een ES Module context
 import path from "path";
 import { fileURLToPath } from "url";
+
+// Losse router voor authenticatie (login/register)
 import authRouter from "./routes/auth.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// =======================
+// 📍 Padconfiguratie (__dirname workaround voor ES Modules)
+// =======================
 
-const app = express();
-const PORT = 3001;
+const __filename = fileURLToPath(import.meta.url); // Geeft de bestandsnaam van dit bestand
+const __dirname = path.dirname(__filename); // Bepaalt de directory waarin dit bestand zich bevindt
 
-app.use(cors());
-app.use(express.json());
+// =======================
+// 🚀 Setup van Express App
+// =======================
+
+const app = express(); // Initieer Express app
+const PORT = 3001; // Server draait lokaal op poort 3001 (frontend op 3000?)
+
+// Middleware
+app.use(cors()); // Sta frontend toe (CORS voorkomt 'Access-Control-Allow-Origin'-fouten)
+app.use(express.json()); // Laat toe dat JSON data in request body gelezen kan worden
+
+// Maak de 'uploads'-map toegankelijk via de URL (zodat afbeeldingen getoond kunnen worden in frontend)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const db = new sqlite3.Database(path.join(__dirname, "sqlite.db"));
+// =======================
+// 🗃️ DATABASE Initialisatie
+// =======================
 
-// Tabellen aanmaken
+const db = new sqlite3.Database(path.join(__dirname, "sqlite.db")); // Open of maak databasebestand aan
+
+// Tabel: gebruikers met unieke username en wachtwoord (voor login/register)
 db.run(`CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE,
   password TEXT
 )`);
 
+// Tabel: geüploade foto's met bestandsnaam en gebruikersnaam
 db.run(`CREATE TABLE IF NOT EXISTS photos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user TEXT NOT NULL,
   filename TEXT NOT NULL
 )`);
 
-// Description-kolom toevoegen als die nog niet bestaat
+// Controleer of er al een kolom 'description' is in de 'photos' tabel (om upgrade van oudere versies te ondersteunen)
 db.all("PRAGMA table_info(photos)", (err, columns) => {
   if (err) {
     console.error("Fout bij ophalen van tabelinfo:", err);
@@ -43,6 +74,7 @@ db.all("PRAGMA table_info(photos)", (err, columns) => {
   }
 });
 
+// Tabel: likes, één per gebruiker per foto (unieke combinatie via constraint)
 db.run(`CREATE TABLE IF NOT EXISTS likes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   photo_id INTEGER NOT NULL,
@@ -50,6 +82,7 @@ db.run(`CREATE TABLE IF NOT EXISTS likes (
   UNIQUE(photo_id, username)
 )`);
 
+// Tabel: comments op foto's met timestamp (zodat we ze chronologisch kunnen tonen)
 db.run(`CREATE TABLE IF NOT EXISTS comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   photo_id INTEGER NOT NULL,
@@ -58,6 +91,7 @@ db.run(`CREATE TABLE IF NOT EXISTS comments (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
+// Tabel: gedeelde foto's (ook max. 1 per gebruiker per foto via UNIQUE)
 db.run(`CREATE TABLE IF NOT EXISTS shares (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   photo_id INTEGER NOT NULL,
@@ -65,19 +99,30 @@ db.run(`CREATE TABLE IF NOT EXISTS shares (
   UNIQUE(photo_id, username)
 )`);
 
+// =======================
+// 🖼️ Multer Configuratie voor Foto Upload
+// =======================
+
+// Bepaal hoe en waar bestanden opgeslagen worden
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
+  destination: (req, file, cb) => cb(null, "uploads/"), // Opslaglocatie
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + "-" + file.originalname;
+    const uniqueName = Date.now() + "-" + file.originalname; // Vermijd dubbele bestandsnamen
     cb(null, uniqueName);
   },
 });
-const upload = multer({ storage });
 
-// Foto uploaden
+const upload = multer({ storage }); // Initialiseer upload middleware
+
+// =======================
+// 📸 API ENDPOINTS
+// =======================
+
+// ➕ Foto uploaden + optionele beschrijving opslaan
 app.post("/api/photos/:username", upload.single("photo"), (req, res) => {
   const username = req.params.username;
   const description = req.body.description || "";
+
   if (!req.file) {
     return res.status(400).json({ error: "Geen bestand geüpload" });
   }
@@ -89,12 +134,12 @@ app.post("/api/photos/:username", upload.single("photo"), (req, res) => {
     [username, filename, description],
     function (err) {
       if (err) return res.status(500).json({ error: "Database fout" });
-      res.json({ id: this.lastID, filename, description });
+      res.json({ id: this.lastID, filename, description }); // Return info over geüploade foto
     }
   );
 });
 
-// Alle foto's ophalen
+// 🔍 Alle foto's ophalen (voor algemene feed)
 app.get("/api/photos", (req, res) => {
   db.all("SELECT id, filename, user, description FROM photos", (err, rows) => {
     if (err) return res.status(500).json({ error: "Database fout" });
@@ -102,7 +147,7 @@ app.get("/api/photos", (req, res) => {
   });
 });
 
-// Foto's van gebruiker ophalen
+// 🔍 Alle foto's van één specifieke gebruiker ophalen (voor profielpagina)
 app.get("/api/photos/:username", (req, res) => {
   const username = req.params.username;
 
@@ -116,10 +161,15 @@ app.get("/api/photos/:username", (req, res) => {
   );
 });
 
-// Like toevoegen
+// =======================
+// ❤️ LIKES
+// =======================
+
+// ➕ Like toevoegen (maar slechts 1 keer per foto per gebruiker)
 app.post("/api/photos/:photoId/like", (req, res) => {
   const { photoId } = req.params;
   const { username } = req.body;
+
   if (!username)
     return res.status(400).json({ error: "Username is verplicht" });
 
@@ -129,6 +179,7 @@ app.post("/api/photos/:photoId/like", (req, res) => {
     function (err) {
       if (err) return res.status(500).json({ error: "Database fout bij like" });
 
+      // ✅ Geef het totale aantal likes terug na toevoegen
       db.get(
         "SELECT COUNT(*) AS count FROM likes WHERE photo_id = ?",
         [photoId],
@@ -142,9 +193,10 @@ app.post("/api/photos/:photoId/like", (req, res) => {
   );
 });
 
-// Likes ophalen
+// 🔍 Likes ophalen (wie heeft geliked?)
 app.get("/api/photos/:photoId/likes", (req, res) => {
   const { photoId } = req.params;
+
   db.all(
     "SELECT username FROM likes WHERE photo_id = ?",
     [photoId],
@@ -158,10 +210,15 @@ app.get("/api/photos/:photoId/likes", (req, res) => {
   );
 });
 
-// Share toevoegen
+// =======================
+// 🔁 SHARES
+// =======================
+
+// ➕ Share toevoegen (zelfde logica als likes)
 app.post("/api/photos/:photoId/share", (req, res) => {
   const { photoId } = req.params;
   const { username } = req.body;
+
   if (!username)
     return res.status(400).json({ error: "Username is verplicht" });
 
@@ -172,22 +229,24 @@ app.post("/api/photos/:photoId/share", (req, res) => {
       if (err)
         return res.status(500).json({ error: "Database fout bij share" });
 
+      // ✅ Geef het totaal aantal shares terug
       db.get(
         "SELECT COUNT(*) AS count FROM shares WHERE photo_id = ?",
         [photoId],
         (err, row) => {
           if (err)
             return res.status(500).json({ error: "Fout bij tellen shares" });
-          res.json({ count: row.count }); // <-- Fix: stuur count in een object
+          res.json({ count: row.count });
         }
       );
     }
   );
 });
 
-// Shares ophalen
+// 🔍 Aantal shares ophalen
 app.get("/api/photos/:photoId/shares", (req, res) => {
   const { photoId } = req.params;
+
   db.get(
     "SELECT COUNT(*) AS count FROM shares WHERE photo_id = ?",
     [photoId],
@@ -196,15 +255,20 @@ app.get("/api/photos/:photoId/shares", (req, res) => {
         return res
           .status(500)
           .json({ error: "Database fout bij ophalen shares" });
-      res.json({ count: row.count }); // <-- Fix: stuur count in een object
+      res.json({ count: row.count });
     }
   );
 });
 
-// Comment toevoegen
+// =======================
+// 💬 COMMENTS
+// =======================
+
+// ➕ Comment toevoegen aan een foto
 app.post("/api/photos/:photoId/comment", (req, res) => {
   const { photoId } = req.params;
   const { username, comment } = req.body;
+
   if (!username || !comment)
     return res
       .status(400)
@@ -223,9 +287,10 @@ app.post("/api/photos/:photoId/comment", (req, res) => {
   );
 });
 
-// Comments ophalen
+// 🔍 Alle comments van een foto ophalen, nieuwste eerst
 app.get("/api/photos/:photoId/comments", (req, res) => {
   const { photoId } = req.params;
+
   db.all(
     "SELECT id, username, comment, created_at FROM comments WHERE photo_id = ? ORDER BY created_at DESC",
     [photoId],
@@ -239,8 +304,14 @@ app.get("/api/photos/:photoId/comments", (req, res) => {
   );
 });
 
-app.use("/api/auth", authRouter);
+// =======================
+// 🔐 AUTHENTICATIE ROUTES (register/login)
+// =======================
+app.use("/api/auth", authRouter); // Externe router voor login/register
 
+// =======================
+// 🟢 START SERVER
+// =======================
 app.listen(PORT, () => {
-  console.log(`Server draait op http://localhost:${PORT}`);
+  console.log(`✅ Server draait op http://localhost:${PORT}`);
 });
